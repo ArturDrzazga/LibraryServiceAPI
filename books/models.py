@@ -12,6 +12,6 @@ class Book(models.Model):
         max_length=4,
         choices=CoverType.choices,
         default=CoverType.SOFT,
-        )
+    )
     inventory = models.PositiveIntegerField()
     daily_fee = models.DecimalField(max_digits=10, decimal_places=2)
