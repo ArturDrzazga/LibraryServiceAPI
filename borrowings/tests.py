@@ -94,3 +94,25 @@ class BorrowingApiTests(TestCase):
         self.client.force_authenticate(self.admin)
         res = self.client.get(BORROWINGS_URL, {"user_id": self.user.id})
         self.assertEqual(len(res.data), 1)
+
+    def test_create_borrowing(self):
+        self.client.force_authenticate(self.user)
+        payload = {
+            "book": self.book.id,
+            "expected_return_date": date.today() + timedelta(days=7),
+        }
+        res = self.client.post(BORROWINGS_URL, payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.inventory, 4)
+
+    def test_create_borrowing_no_inventory(self):
+        self.book.inventory = 0
+        self.book.save()
+        self.client.force_authenticate(self.user)
+        payload = {
+            "book": self.book.id,
+            "expected_return_date": date.today() + timedelta(days=7),
+        }
+        res = self.client.post(BORROWINGS_URL, payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
