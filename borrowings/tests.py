@@ -73,3 +73,24 @@ class BorrowingApiTests(TestCase):
         self.client.force_authenticate(self.admin)
         res = self.client.get(BORROWINGS_URL)
         self.assertEqual(len(res.data), 2)
+
+    def test_filter_active_borrowings(self):
+        sample_borrowing(self.user, self.book)
+        sample_borrowing(self.user, self.book, actual_return_date=date.today())
+        self.client.force_authenticate(self.user)
+        res = self.client.get(BORROWINGS_URL, {"is_active": "true"})
+        self.assertEqual(len(res.data), 1)
+
+    def test_filter_inactive_borrowings(self):
+        sample_borrowing(self.user, self.book)
+        sample_borrowing(self.user, self.book, actual_return_date=date.today())
+        self.client.force_authenticate(self.user)
+        res = self.client.get(BORROWINGS_URL, {"is_active": "false"})
+        self.assertEqual(len(res.data), 1)
+
+    def test_admin_filter_by_user_id(self):
+        sample_borrowing(self.user, self.book)
+        sample_borrowing(self.user2, self.book)
+        self.client.force_authenticate(self.admin)
+        res = self.client.get(BORROWINGS_URL, {"user_id": self.user.id})
+        self.assertEqual(len(res.data), 1)
