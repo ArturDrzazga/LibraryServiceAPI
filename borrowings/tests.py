@@ -1,5 +1,8 @@
 from datetime import date, timedelta
 
+from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.test import APIClient
 from django.test import TestCase
 
 from books.models import Book
@@ -27,3 +30,46 @@ def sample_borrowing(user, book, **params):
     }
     defaults.update(params)
     return Borrowing.objects.create(**defaults)
+
+
+class BorrowingApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = get_user_model().objects.create_superuser(
+            email="admin@test.com",
+            password="testpass123",
+        )
+        self.user = get_user_model().objects.create_user(
+            email="user@test.com",
+            password="testpass123",
+        )
+        self.user2 = get_user_model().objects.create_user(
+            email="user2@test.com",
+            password="testpass123",
+        )
+        self.book = sample_book()
+
+    def test_list_borrowings_unauthenticated(self):
+        res = self.client.get(BORROWINGS_URL)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_borrowings_authenticated(self):
+        sample_borrowing(self.user, self.book)
+        self.client.force_authenticate(self.user)
+        res = self.client.get(BORROWINGS_URL)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+
+    def test_user_sees_only_own_borrowings(self):
+        sample_borrowing(self.user, self.book)
+        sample_borrowing(self.user2, self.book)
+        self.client.force_authenticate(self.user)
+        res = self.client.get(BORROWINGS_URL)
+        self.assertEqual(len(res.data), 1)
+
+    def test_admin_sees_all_borrowings(self):
+        sample_borrowing(self.user, self.book)
+        sample_borrowing(self.user2, self.book)
+        self.client.force_authenticate(self.admin)
+        res = self.client.get(BORROWINGS_URL)
+        self.assertEqual(len(res.data), 2)
