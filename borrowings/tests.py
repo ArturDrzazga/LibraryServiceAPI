@@ -116,3 +116,21 @@ class BorrowingApiTests(TestCase):
         }
         res = self.client.post(BORROWINGS_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_return_borrowing(self):
+        borrowing = sample_borrowing(self.user, self.book)
+        self.client.force_authenticate(self.user)
+        res = self.client.post(f"{BORROWINGS_URL}{borrowing.id}/return/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        borrowing.refresh_from_db()
+        self.assertEqual(borrowing.actual_return_date, date.today())
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.inventory, 6)
+
+    def test_return_borrowing_twice(self):
+        borrowing = sample_borrowing(
+            self.user, self.book, actual_return_date=date.today()
+        )
+        self.client.force_authenticate(self.user)
+        res = self.client.post(f"{BORROWINGS_URL}{borrowing.id}/return/")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
